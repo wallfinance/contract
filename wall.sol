@@ -29,7 +29,8 @@
 * The Wall - Stability growth 
 * Created by Colangius 2022
 * Official Website: https://thewall.finance
-*
+* Github: https://github.com/wallfinance
+* Twitter: https://twitter.com/wall_financeETH
 */
 
 pragma solidity 0.8.13;
