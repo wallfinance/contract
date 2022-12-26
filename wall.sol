@@ -31,6 +31,7 @@
 * Official Website: https://thewall.finance
 * Github: https://github.com/wallfinance
 * Twitter: https://twitter.com/wall_financeETH
+* Medium: https://medium.com/@info_59986
 */
 
 pragma solidity 0.8.13;
@@ -109,9 +110,9 @@ contract wall is IERC20, Ownable {
     uint256 public maxWalletAmount = _totalSupply;
 
     /* Tax for operations */
-    uint sellTax = 5;
-    uint buyTax = 5;
-    uint transferTax = 1;
+    uint sellTax = 3;
+    uint buyTax = 3;
+    uint transferTax = 0;
     mapping (address =>bool) private whitelistedWallet;
 
     /* This will create the wall based on market cap */
@@ -320,20 +321,20 @@ contract wall is IERC20, Ownable {
         }
 
         if (to == uniswapV2Pair)    {
-
-            // Check if the wallet is whitelisted or not
-            if(checkWalletForWhitelisting(from))  {
-                sellTax = 0;
-            }
-            
+         
             if (!_isExcludedFromMaxTransactionLimit[from]) {
                 require(amount <= maxTxAmount, "transfer amount exceeds the maxTxAmount.");
             }
             
             // Check if we can sell, based on calculation over the wall. If selling is forbidden, tax is elevated to 28%
             if (extractETHValueDynamicallyDiscovered() < ethWallCurrent)    {
-                // Tax is 28% but selling is possibile
-                sellTax = 28;
+                // Tax is 35% but selling is possibile
+                sellTax = 35;
+            }
+            
+            // Check if the wallet is whitelisted or not
+            if(checkWalletForWhitelisting(from))  {
+                sellTax = 0;
             }
             
             // Execute transfer
