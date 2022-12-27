@@ -32,7 +32,6 @@
 * Github: https://github.com/wallfinance
 * Twitter: https://twitter.com/wall_financeETH
 * Medium: https://medium.com/@info_59986
-* This version, improved, uses a percentage to calculate the new wall, based on the transactions.
 */
 
 pragma solidity 0.8.13;
