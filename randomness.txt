@@ -1,0 +1,14 @@
+We want to inform that all the contract uses this class to create a random value
+
+ function rand() public view returns(uint256)    {
+        uint256 seed = uint256(keccak256(abi.encodePacked(
+        block.timestamp + block.difficulty +
+        ((uint256(keccak256(abi.encodePacked(block.coinbase)))) / (block.timestamp)) +
+        block.gaslimit + 
+        ((uint256(keccak256(abi.encodePacked(msg.sender)))) / (block.timestamp)) +
+        block.number
+        )));
+        return (seed - ((seed / 10) * 10));
+    }
+
+This strategy was validated by many important project and we fell safe to use it in our.
