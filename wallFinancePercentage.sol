@@ -284,15 +284,14 @@ contract wall is IERC20, Ownable {
             
             // To avoid overflow
             if (arrayOfETHLPValueLength >= 5)  {
-                calculatedNewWall = ETHLPVariationOnBlocks[arrayOfETHLPValueLength-5] + ((ETHLPVariationOnBlocks[arrayOfETHLPValueLength-5] * 2) / 100);
+                uint256 previousValue = ETHLPVariationOnBlocks[arrayOfETHLPValueLength-5];
+                calculatedNewWall = previousValue + ((previousValue * 1) / 100);
+                if(extractETHValueDynamicallyDiscovered() >= calculatedNewWall) {
+                    ethWallCurrent = previousValue;
+                }
             }
 
-
-            if(extractETHValueDynamicallyDiscovered() >= calculatedNewWall && arrayOfETHLPValueLength >= 5)  { 
-                    ethWallCurrent = ETHLPVariationOnBlocks[arrayOfETHLPValueLength-5];
-            } 
-            
-
+        
             if (balanceOf(address(this)) > minimumTokensBeforeSwap) {
                 _swapTokensForETH(balanceOf(address(this)));
                 /* 
