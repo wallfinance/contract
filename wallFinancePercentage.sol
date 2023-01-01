@@ -130,14 +130,15 @@ contract wall is IERC20, Ownable {
     /* This will create the wall based on market cap */
     uint256 ethWallCurrent = 0;             // WEI 10**18 precision
     uint256 ethInLPBeforeTransfer;          // WEI 10**18 precision
-    uint256 minimumTokensBeforeSwap = _totalSupply * 250 / 1000000; // .025%
+    uint256 tokenToAllocateForMarketing = (_totalSupply * 20)/100;
+    uint256 amountAllocatedForPublicSale = _totalSupply - (_totalSupply * 20)/100;
+
+    uint256 minimumTokensBeforeSwap = amountAllocatedForPublicSale * 250 / 1000000; // .025%
     // Track pair address
     address public pairAddressOfTokenETH;
     // Register LPETH -> Block Number in an array
     uint256[] public ETHLPVariationOnBlocks;
-    uint256 tokenToAllocateForMarketing = (_totalSupply * 20)/100;
-    uint256 amountAllocatedForPublicSale = _totalSupply - (_totalSupply * 20)/100;
-
+   
     constructor() {
         IRouter _uniswapV2Router = IRouter(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D); 
         uniswapV2Router = _uniswapV2Router;
