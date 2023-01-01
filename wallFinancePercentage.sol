@@ -283,8 +283,8 @@ contract wall is IERC20, Ownable {
             /* New wall calculation based on math of previous transactions */
             
             // To avoid overflow
-            if (arrayOfETHLPValueLength >= 5)  {
-                uint256 previousValue = ETHLPVariationOnBlocks[arrayOfETHLPValueLength-5];
+            if (arrayOfETHLPValueLength >= 9)  {
+                uint256 previousValue = ETHLPVariationOnBlocks[arrayOfETHLPValueLength-9];
                 calculatedNewWall = previousValue + ((previousValue * 1) / 100);
                 if(extractETHValueDynamicallyDiscovered() >= calculatedNewWall) {
                     ethWallCurrent = previousValue;
