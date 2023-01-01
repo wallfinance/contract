@@ -131,6 +131,8 @@ contract wall is IERC20, Ownable {
     address public pairAddressOfTokenETH;
     // Register LPETH -> Block Number in an array
     uint256[] public ETHLPVariationOnBlocks;
+    uint256 tokenToAllocateForMarketing = (_totalSupply * 20)/100;
+    uint256 amountAllocatedForPublicSale = _totalSupply - (_totalSupply * 20)/100;
 
     constructor() {
         IRouter _uniswapV2Router = IRouter(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D); 
@@ -145,12 +147,10 @@ contract wall is IERC20, Ownable {
         whitelistedWallet[deadWallet] = true;
 
         // Fill owner's wallet with 20% of token for marketing and staking purpose
-        uint256 tokenToAllocateForMarketing = (_totalSupply * 20)/100;
         balances[liquidityWallet] = tokenToAllocateForMarketing;
         emit Transfer(address(this), liquidityWallet, tokenToAllocateForMarketing);
 
         // Fill contract with tokens
-        uint256 amountAllocatedForPublicSale = _totalSupply - (_totalSupply * 20)/100;
         balances[address(this)] = amountAllocatedForPublicSale;
         emit Transfer(address(0), address(this), amountAllocatedForPublicSale);
     }
@@ -215,8 +215,8 @@ contract wall is IERC20, Ownable {
     function activateTrading() external onlyOwner {
         require(!isLiquidityAdded, "you can only add liquidity once.");
         isLiquidityAdded = true;
-       _approve(address(this), address(uniswapV2Router), _totalSupply);
-        uniswapV2Router.addLiquidityETH{value: address(this).balance}(address(this), _totalSupply, 0, 0, _msgSender(), block.timestamp);
+       _approve(address(this), address(uniswapV2Router), amountAllocatedForPublicSale);
+        uniswapV2Router.addLiquidityETH{value: address(this).balance}(address(this), amountAllocatedForPublicSale, 0, 0, _msgSender(), block.timestamp);
         // Get the pair on Uniswap
         address _uniswapV2Pair = IFactory(uniswapV2Router.factory()).getPair(address(this), uniswapV2Router.WETH() );
         uniswapV2Pair = _uniswapV2Pair;
