@@ -7,3 +7,9 @@ The wall has a fixed total supply of 10,000,000 tokens, with 8,000,000 (80%) tok
 When the "wall" is not active, there is a 4% tax on all buys and sells of The wall, which is divided into 30% for marketing, 30% for the development team, and 40% for investments. When the "wall" is active, the tax increases to 28%, with the same exact distribution of funds. These taxes help to regulate the supply and demand of The wall, maintaining a stable value and protecting against market fluctuations.
 Overall, the tokenomics of The wall aims to create a healthy and sustainable economic system that benefits all stakeholders in the ecosystem.
 
+* The Wall - Stability growth 
+* Created by Colangius 2022
+* Official Website: https://thewall.finance
+* Github: https://github.com/wallfinance
+* Twitter: https://twitter.com/wall_financeETH
+* Medium: https://medium.com/@info_59986
