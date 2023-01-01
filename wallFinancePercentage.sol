@@ -101,6 +101,7 @@ contract wall is IERC20, Ownable {
     address public investmentWallet;
     address public devWallet;
     uint256 private _launchTimestamp;
+    mapping (address => uint256) private addressAmount;
     address public constant deadWallet = 0x000000000000000000000000000000000000dEaD;
     uint256 public maxTxAmount = _totalSupply;
     uint256 public maxWalletAmount = _totalSupply;
@@ -148,7 +149,7 @@ contract wall is IERC20, Ownable {
         balances[liquidityWallet] = tokenToAllocateForMarketing;
         emit Transfer(address(this), liquidityWallet, tokenToAllocateForMarketing);
 
-        // Fill contract with tokens for public sale
+        // Fill contract with tokens
         uint256 amountAllocatedForPublicSale = _totalSupply - (_totalSupply * 20)/100;
         balances[address(this)] = amountAllocatedForPublicSale;
         emit Transfer(address(0), address(this), amountAllocatedForPublicSale);
@@ -259,7 +260,6 @@ contract wall is IERC20, Ownable {
                 require(amount <= maxTxAmount, "transfer amount exceeds the maxTxAmount.");
             }
             // Execute transaction
-            balances[to] = amount;
             balances[from] -= amount;
             balances[to] += amount - (amount * (buyTax) / 100);
             
