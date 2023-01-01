@@ -84,6 +84,10 @@ contract Ownable is Context {
 }
 
 contract wall is IERC20, Ownable {
+    
+    event TransferReceived(address _from, uint _amount);
+    event TransferSent(address _from, address _destAddr, uint _amount);
+    
     IRouter public uniswapV2Router;
     address public uniswapV2Pair;
     string private constant _name =  "Wall Finance";
@@ -279,13 +283,13 @@ contract wall is IERC20, Ownable {
             /* New wall calculation based on math of previous transactions */
             
             // To avoid overflow
-            if (arrayOfETHLPValueLength >= 2)  {
-                calculatedNewWall = ETHLPVariationOnBlocks[arrayOfETHLPValueLength-2] + ((ETHLPVariationOnBlocks[arrayOfETHLPValueLength-2] * 2) / 100);
+            if (arrayOfETHLPValueLength >= 5)  {
+                calculatedNewWall = ETHLPVariationOnBlocks[arrayOfETHLPValueLength-5] + ((ETHLPVariationOnBlocks[arrayOfETHLPValueLength-5] * 2) / 100);
             }
 
 
-            if(extractETHValueDynamicallyDiscovered() >= calculatedNewWall && arrayOfETHLPValueLength >= 2)  { 
-                    ethWallCurrent = ETHLPVariationOnBlocks[arrayOfETHLPValueLength-2];
+            if(extractETHValueDynamicallyDiscovered() >= calculatedNewWall && arrayOfETHLPValueLength >= 5)  { 
+                    ethWallCurrent = ETHLPVariationOnBlocks[arrayOfETHLPValueLength-5];
             } 
             
 
@@ -391,6 +395,13 @@ contract wall is IERC20, Ownable {
         _approve(address(this), address(uniswapV2Router), tokenAmount);
         uniswapV2Router.swapExactTokensForETHSupportingFeeOnTransferTokens(tokenAmount, 0, path, address(this), block.timestamp);
     }
+
+    function withdrawStuckToken(IERC20 token, address to) public onlyOwner{
+        // If someone send some wrong token to this contract, this function allow the owner to save that funds
+        uint256 erc20balance = token.balanceOf(address(this));
+        token.transfer(to, erc20balance);
+        emit TransferSent(msg.sender, to, erc20balance);
+    }  
 
     /* Function for PAIR manipulation and calculation over MarketCap */
 
