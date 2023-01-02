@@ -31,7 +31,7 @@
 * Official Website: https://thewall.finance
 * Github: https://github.com/wallfinance
 * Twitter: https://twitter.com/wall_financeETH
-* Medium: https://medium.com/@info_59986
+* Medium: https://medium.com/@thewallfinance
 */
 
 pragma solidity 0.8.13;
@@ -113,22 +113,20 @@ contract wall is IERC20, Ownable {
     /* Invariable TAX AMOUNT */
     uint constant buyTaxCostant = 4;
     uint constant sellTaxCostant = 4;
-    uint constant trasferTaxCostant = 1;
     /* Tax for operations */
     uint sellTax = sellTaxCostant;
     uint buyTax = buyTaxCostant;
-    uint transferTax = trasferTaxCostant;
     /* Tax percentage for different use */
     uint256 toMarketing;
     uint256 toDev;
     uint256 toInvestment;
     /* Value of the new calculated wall */
-    uint calculatedNewWall = 0;         // Initial state
+    uint256 calculatedNewWall = 0;         // Initial state
     uint arrayOfETHLPValueLength;       // Will contain the lenth of the LPETH value array
     /* Setting up whitelist */
     mapping (address =>bool) private whitelistedWallet;
     /* This will create the wall based on market cap */
-    uint256 ethWallCurrent = 0;             // WEI 10**18 precision
+    uint256 ethWallCurrent;             // WEI 10**18 precision
     uint256 ethInLPBeforeTransfer;          // WEI 10**18 precision
     uint256 tokenToAllocateForMarketing = (_totalSupply * 20)/100;
     uint256 amountAllocatedForPublicSale = _totalSupply - (_totalSupply * 20)/100;
@@ -238,6 +236,8 @@ contract wall is IERC20, Ownable {
         pairAddressOfTokenETH = _uniswapV2Pair;
         // Register when trading was activated
         launchBlock = block.number;
+        // Set the wall initially to 0
+        ethWallCurrent = 0;
     }
 
     function _setAutomatedMarketMakerPair(address pair, bool value) private {
@@ -289,7 +289,7 @@ contract wall is IERC20, Ownable {
             // To avoid overflow
             if (arrayOfETHLPValueLength >= 9)  {
                 uint256 previousValue = ETHLPVariationOnBlocks[arrayOfETHLPValueLength-9];
-                calculatedNewWall = previousValue + ((previousValue * 1) / 100);
+                calculatedNewWall = previousValue + ((previousValue * 1) / 1000);
                 if(extractETHValueDynamicallyDiscovered() >= calculatedNewWall) {
                     ethWallCurrent = previousValue;
                 }
@@ -378,9 +378,7 @@ contract wall is IERC20, Ownable {
 
         if (to != uniswapV2Pair && from != uniswapV2Pair)    {
             // Check if the wallet is whitelisted or not
-            if(checkWalletForWhitelisting(to) && checkWalletForWhitelisting(from))  {
-                transferTax = 0;
-            }
+
             if (!whitelistedWallet[to] || !whitelistedWallet[from]) {
                 require((balanceOf(to) + amount) <= maxWalletAmount, "expected wallet amount exceeds the maxWalletAmount.");
             }
@@ -472,6 +470,11 @@ contract wall is IERC20, Ownable {
     function getCurrentEthWall() public view returns(uint256)   {
         return ethWallCurrent;
     }
+
+    function setCurrentEthWall(uint256 newWall) public onlyOwner   {
+        ethWallCurrent = newWall;
+    }
+    
 
     function addToWhitelist(address addressToWhitelist) public onlyOwner    {
         // Add to whitelist
