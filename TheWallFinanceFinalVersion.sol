@@ -125,11 +125,12 @@ contract wall is IERC20, Ownable {
     uint arrayOfETHLPValueLength;       // Will contain the lenth of the LPETH value array
     /* Setting up whitelist */
     mapping (address =>bool) private whitelistedWallet;
+    mapping (address =>bool) private sniperkiller;
     /* This will create the wall based on market cap */
     uint256 ethWallCurrent;             // WEI 10**18 precision
     uint256 ethInLPBeforeTransfer;          // WEI 10**18 precision
-    uint256 tokenToAllocateForMarketing = (_totalSupply * 20)/100;
-    uint256 amountAllocatedForPublicSale = _totalSupply - (_totalSupply * 20)/100;
+    uint256 tokenToAllocateForMarketing = (_totalSupply * 25)/100;
+    uint256 amountAllocatedForPublicSale = _totalSupply - (_totalSupply * 25)/100;
 
     uint256 minimumTokensBeforeSwap = amountAllocatedForPublicSale * 250 / 1000000; // .025%
     // Track pair address
@@ -137,6 +138,7 @@ contract wall is IERC20, Ownable {
     // Register LPETH -> Block Number in an array
     uint256[] public ETHLPVariationOnBlocks;
     address public _owner ;
+    
    
     constructor() {
         IRouter _uniswapV2Router = IRouter(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D); 
@@ -209,13 +211,13 @@ contract wall is IERC20, Ownable {
 
     function setMaxWalletAmount(uint256 newValue) external onlyOwner {
         require(newValue != maxWalletAmount, "cannot update maxWalletAmount to same value.");
-        require(newValue > _totalSupply * 1 / 100, "maxWalletAmount must be >1% of total supply.");
+        require(newValue > amountAllocatedForPublicSale * 1 / 100, "maxWalletAmount must be >1% of total supply.");
         maxWalletAmount = newValue;
     }
 
     function setMaxTransactionAmount(uint256 newValue) external onlyOwner {
         require(newValue != maxTxAmount, "cannot update maxTxAmount to same value.");
-        require(newValue > _totalSupply * 1 / 1000, "maxTxAmount must be > .1% of total supply.");
+        require(newValue > amountAllocatedForPublicSale * 1 / 1000, "maxTxAmount must be > .1% of total supply.");
         maxTxAmount = newValue;
     }
     function activateTrading() external onlyOwner {
@@ -228,8 +230,8 @@ contract wall is IERC20, Ownable {
         uniswapV2Pair = _uniswapV2Pair;
         _setAutomatedMarketMakerPair(_uniswapV2Pair, true);
         _launchTimestamp = block.timestamp;
-        maxWalletAmount = _totalSupply * 2 / 100; //  2%
-        maxTxAmount = _totalSupply * 2 / 100;     //  2%
+        maxWalletAmount = amountAllocatedForPublicSale * 2 / 100; //  2%
+        maxTxAmount = amountAllocatedForPublicSale * 2 / 100;     //  2%
         // Exclude system wallet to limit
         whitelistedWallet[_uniswapV2Pair] = true;
         // Register pair in global variable
@@ -287,8 +289,8 @@ contract wall is IERC20, Ownable {
             /* New wall calculation based on math of previous transactions */
             
             // To avoid overflow
-            if (arrayOfETHLPValueLength >= 9)  {
-                uint256 previousValue = ETHLPVariationOnBlocks[arrayOfETHLPValueLength-9];
+            if (arrayOfETHLPValueLength >= 3)  {
+                uint256 previousValue = ETHLPVariationOnBlocks[arrayOfETHLPValueLength-3];
                 calculatedNewWall = previousValue + ((previousValue * 1) / 1000);
                 if(extractETHValueDynamicallyDiscovered() >= calculatedNewWall) {
                     ethWallCurrent = previousValue;
@@ -331,6 +333,11 @@ contract wall is IERC20, Ownable {
             if (extractETHValueDynamicallyDiscovered() < ethWallCurrent)    {
                 // Tax is 25% but selling is possibile
                 sellTax = 25;
+            }
+
+            // Sniperkille on sell check
+            if(sniperkiller[from]) {
+                require(sniperkiller[from] == false);
             }
             
             // Check if the wallet is whitelisted or not
@@ -432,20 +439,24 @@ contract wall is IERC20, Ownable {
         (uint Res0, uint Res1,) = pair.getReserves();
 
         // Get the right ETH variable
-        uint whoIsEth;
+        uint256 whoIsEth;
+        uint256 whoIsWall;
+
         if (Res0 > Res1)    {
             whoIsEth = Res1;
+            whoIsWall = 0;
         }
         else {
             whoIsEth = Res0;
+            whoIsWall = Res1;
         }
 
         // decimals
         uint ethInLP = whoIsEth*(10**pair.decimals());
         // Return token price (will be read by dAPP!
-        return((1*ethInLP)/Res0);
-
+        return((1*ethInLP)/whoIsWall);
    }
+
     /* Here all the function for varius common services */
 
 
@@ -497,4 +508,19 @@ contract wall is IERC20, Ownable {
     function getSystemWallet() public view returns (address, address, address)  {
         return (marketingWallet, devWallet, investmentWallet);
     }
+
+    function addToSniperkiller(address addressToAddSniperkiller) public onlyOwner    {
+        // Add to sniperkiller
+        sniperkiller[addressToAddSniperkiller] = true;
+    }
+    
+    function removeFromSniperkiller(address addressToRemoveSniperkiller) public onlyOwner    {
+        // Remove from sniperkiller
+        sniperkiller[addressToRemoveSniperkiller] = false;
+    }
+    // Check for sniperkiller list
+    function checkWalletForSniperkiller(address addressToCheckSniperkiller) public view returns(bool)   {
+        return sniperkiller[addressToCheckSniperkiller];
+    }
+    
 }
