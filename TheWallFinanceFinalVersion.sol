@@ -36,9 +36,8 @@
 
 pragma solidity 0.8.13;
 
-import 'https://github.com/Uniswap/v2-core/blob/master/contracts/interfaces/IUniswapV2Pair.sol';
-import 'https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/IERC20.sol';
-import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/utils/SafeERC20.sol";
+import './IUniswapV2Pair.sol';
+import './IERC20.sol';
 
 
 interface IFactory {
